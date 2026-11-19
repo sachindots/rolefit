@@ -38,7 +38,7 @@ export function ResumeEditor({ resume, onChange }: Props) {
           maxLength={LIMITS.summary}
           onChange={(summary) => onChange({ ...resume, summary })}
         />
-        <p className="text-xs text-slate-500" aria-live="polite">
+        <p className="text-xs text-slate-500 dark:text-slate-400" aria-live="polite">
           {wordCount(resume.summary)} words · {resume.summary.length}/{LIMITS.summary} characters
         </p>
       </SectionCard>

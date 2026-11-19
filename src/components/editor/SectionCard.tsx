@@ -4,11 +4,11 @@ import { LIMITS, createId, isSafeUrl, moveItem } from "../../lib/schema";
 import type { BulletItem } from "../../types/resume";
 
 const inputClass =
-  "mt-1 block w-full min-w-0 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 aria-[invalid=true]:border-red-500";
+  "mt-1 block w-full min-w-0 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 aria-[invalid=true]:border-red-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/30";
 const iconButtonClass =
-  "inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700";
 const textButtonClass =
-  "inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700";
 
 export const replaceAt = <T,>(items: readonly T[], index: number, patch: Partial<T>): T[] =>
   items.map((item, i) => (i === index ? { ...item, ...patch } : item));
@@ -27,7 +27,7 @@ export function SectionCard({ title, count, action, defaultOpen = true, children
   const [open, setOpen] = useState(defaultOpen);
   const panelId = useId();
   return (
-    <section className="rounded-lg border border-slate-200 bg-white shadow-sm" aria-label={title}>
+    <section className="rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900" aria-label={title}>
       <header className="flex items-center gap-2 px-4 py-3">
         <button
           type="button"
@@ -36,10 +36,10 @@ export function SectionCard({ title, count, action, defaultOpen = true, children
           aria-controls={panelId}
           onClick={() => setOpen(!open)}
         >
-          <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${open ? "" : "-rotate-90"}`} aria-hidden />
-          <h2 className="truncate text-sm font-semibold text-slate-900">{title}</h2>
+          <ChevronDown className={`h-4 w-4 shrink-0 text-slate-500 transition-transform dark:text-slate-400 ${open ? "" : "-rotate-90"}`} aria-hidden />
+          <h2 className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
           {count !== undefined && (
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600" aria-label={`${count} items`}>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300" aria-label={`${count} items`}>
               {count}
             </span>
           )}
@@ -51,7 +51,7 @@ export function SectionCard({ title, count, action, defaultOpen = true, children
           </button>
         )}
       </header>
-      <div id={panelId} hidden={!open} className="space-y-4 border-t border-slate-100 px-4 py-4">
+      <div id={panelId} hidden={!open} className="space-y-4 border-t border-slate-100 px-4 py-4 dark:border-slate-800">
         {children}
       </div>
     </section>
@@ -70,7 +70,7 @@ interface FieldProps {
 
 export function TextField({ label, value, onChange, maxLength = LIMITS.shortText, multiline, rows = 3, type = "text" }: FieldProps) {
   return (
-    <label className="block min-w-0 text-xs font-medium text-slate-600">
+    <label className="block min-w-0 text-xs font-medium text-slate-600 dark:text-slate-300">
       {label}
       {multiline ? (
         <textarea className={inputClass} rows={rows} value={value} maxLength={maxLength} onChange={(e) => onChange(e.target.value)} />
@@ -93,7 +93,7 @@ export function UrlField({ label, value, onChange }: Pick<FieldProps, "label" | 
   const valid = isSafeUrl(draft);
   return (
     <div className="min-w-0">
-      <label className="block text-xs font-medium text-slate-600">
+      <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
         {label}
         <input
           className={inputClass}
@@ -109,7 +109,7 @@ export function UrlField({ label, value, onChange }: Pick<FieldProps, "label" | 
         />
       </label>
       {!valid && (
-        <p id={hintId} className="mt-1 text-xs text-red-600">
+        <p id={hintId} className="mt-1 text-xs text-red-600 dark:text-red-400">
           Enter a full http:// or https:// link. Not saved until valid.
         </p>
       )}
@@ -132,7 +132,7 @@ export function ListField({ label, value, onChange }: { label: string; value: st
     if (parseList(draft).join("\n") !== value.join("\n")) setDraft(value.join(", "));
   }
   return (
-    <label className="block min-w-0 text-xs font-medium text-slate-600">
+    <label className="block min-w-0 text-xs font-medium text-slate-600 dark:text-slate-300">
       {label} (comma separated)
       <input
         className={inputClass}
@@ -186,7 +186,7 @@ export function BulletsEditor({ scope, bullets, onChange }: BulletsEditorProps) 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold text-slate-700">Bullets</h3>
+        <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-300">Bullets</h3>
         <button
           type="button"
           className={textButtonClass}
