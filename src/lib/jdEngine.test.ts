@@ -43,6 +43,21 @@ describe("tokenizeTechnicalText", () => {
     expect(tokenizeTechnicalText("REST/GraphQL")).toEqual(["rest/graphql", "rest", "graphql"]);
   });
 
+  it.each(["redis", "devops", "microservices", "jenkins", "prometheus", "rails", "pandas", "nestjs"])(
+    "does not singularize tech term %s",
+    (term) => {
+      expect(tokenizeTechnicalText(term.toUpperCase())).toEqual([term]);
+    },
+  );
+
+  it("does not singularize fluff words", () => {
+    expect(tokenizeTechnicalText("requirements benefits")).toEqual(["requirements", "benefits"]);
+  });
+
+  it("still singularizes ordinary plurals", () => {
+    expect(tokenizeTechnicalText("systems")).toEqual(["system"]);
+  });
+
   it("normalizes aliases", () => {
     expect(tokenizeTechnicalText("NodeJS cicd TS Postgres")).toEqual(["node.js", "ci/cd", "typescript", "postgresql"]);
   });
@@ -96,6 +111,11 @@ describe("analyzeJobDescription", () => {
     expect(all.score).toBe(100);
     expect(none.missing[0]).toEqual({ keyword: "python", count: 3 });
     expect(none.missing[1]).toEqual({ keyword: "docker", count: 2 });
+  });
+
+  it("matches tech terms regardless of plural form", () => {
+    const result = analyzeJobDescription(resumeWith(["Microservices", "Redis"]), "Microservices and Redis experience");
+    expect(keywords(result.matched).sort()).toEqual(["microservices", "redis"]);
   });
 
   it("does not treat stopwords or fluff as keywords", () => {

@@ -153,7 +153,8 @@ function normalizeToken(raw: string): string {
   const lower = raw.toLowerCase();
   const aliased = ALIASES.get(lower);
   if (aliased) return aliased;
-  if (lower.length > 4 && lower.endsWith("s") && !lower.endsWith("ss") && !/[+#./\d]/.test(lower)) {
+  const protectedWord = TECH_TERMS.has(lower) || STOPWORDS.has(lower) || FLUFF.has(lower);
+  if (!protectedWord && lower.length > 4 && lower.endsWith("s") && !lower.endsWith("ss") && !/[+#./\d]/.test(lower)) {
     return lower.slice(0, -1);
   }
   return lower;
