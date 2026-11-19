@@ -5,8 +5,10 @@ import { createEmptyWorkspace } from "./lib/schema";
 import { STORAGE_KEY, loadWorkspaceState } from "./lib/storage";
 
 beforeEach(() => {
+  sessionStorage.clear();
   localStorage.clear();
   document.documentElement.classList.remove("dark");
+  vi.restoreAllMocks();
 });
 
 describe("App", () => {
@@ -249,5 +251,126 @@ describe("App", () => {
     localStorage.setItem(STORAGE_KEY, "{not json");
     render(<App />);
     expect(screen.getByRole("status")).toHaveTextContent(/unreadable/);
+  });
+
+  it("switches privacy badge when Gemini key is configured and supports per-section Tailor with AI (Summary, Experience, Projects, Skills) with Accept and Discard", async () => {
+    render(<App />);
+
+    expect(screen.getByTestId("privacy-badge")).toHaveTextContent("Local-only · Zero tracking");
+
+    // Open Summary Tailor modal in zero-key mode first
+    fireEvent.click(screen.getByTestId("tailor-summary-button"));
+    expect(screen.getByTestId("zero-key-fallback")).toBeInTheDocument();
+
+    // Click Configure Gemini API Key inside Tailor modal
+    fireEvent.click(screen.getByRole("button", { name: /Configure Gemini API Key/i }));
+    const settingsDialog = screen.getByRole("dialog", { name: /AI Settings/i });
+    fireEvent.change(within(settingsDialog).getByLabelText("Gemini API key"), {
+      target: { value: "AIzaSyAppTestValidKey1234567890" },
+    });
+    fireEvent.click(within(settingsDialog).getByRole("button", { name: "Save key" }));
+
+    // Privacy badge updates immediately to Local-first
+    expect(screen.getByTestId("privacy-badge")).toHaveTextContent(
+      "Local-first · AI via Gemini (on click)",
+    );
+
+    const originalSummary = (screen.getByLabelText("Summary") as HTMLTextAreaElement).value;
+    const tailoredSummary =
+      "Principal Distributed Systems Engineer with 9 years scaling TypeScript and Node.js platforms reducing page load latency by 42%.";
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      rewritten: tailoredSummary,
+                      changes: ["Aligned summary with target JD keywords and preserved 42% metric."],
+                      missingNumbers: [],
+                      scanTest: {
+                        who: "Principal Platform Engineer",
+                        seniority: "Staff / Principal",
+                        whyThisJob: "Proven TypeScript and Kubernetes architecture delivery.",
+                      },
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Generate Rewrite" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("ai-review-panel")).toBeInTheDocument();
+    });
+
+    // Discard first: summary must remain unchanged
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    expect(screen.getByLabelText("Summary")).toHaveValue(originalSummary);
+
+    // Re-open Summary Tailor, generate, and Accept
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      rewritten: tailoredSummary,
+                      changes: ["Aligned summary with target JD keywords."],
+                      missingNumbers: [],
+                      scanTest: {
+                        who: "Principal Platform Engineer",
+                        seniority: "Staff / Principal",
+                        whyThisJob: "Proven TypeScript and Kubernetes architecture delivery.",
+                      },
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    fireEvent.click(screen.getByTestId("tailor-summary-button"));
+    fireEvent.click(screen.getByRole("button", { name: "Generate Rewrite" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("ai-review-panel")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Accept Rewrite" }));
+    expect(screen.getByLabelText("Summary")).toHaveValue(tailoredSummary);
+
+    // Verify Experience, Project, and Skills Tailor triggers open their respective sections
+    fireEvent.click(screen.getByTestId("tailor-experience-1-button"));
+    expect(screen.getByRole("dialog", { name: /Tailor with AI · Experience/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+
+    fireEvent.click(screen.getByTestId("tailor-project-1-button"));
+    expect(screen.getByRole("dialog", { name: /Tailor with AI · Project/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+
+    fireEvent.click(screen.getByTestId("tailor-skills-button"));
+    expect(screen.getByRole("dialog", { name: /Tailor with AI · Skills/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+
+    // Clear key in AI Settings and verify privacy badge returns to Local-only
+    fireEvent.click(screen.getByTestId("ai-settings-button"));
+    const reopenSettings = screen.getByRole("dialog", { name: /AI Settings/i });
+    fireEvent.click(within(reopenSettings).getByRole("button", { name: "Clear key" }));
+    fireEvent.click(within(reopenSettings).getByRole("button", { name: "Cancel" }));
+    expect(screen.getByTestId("privacy-badge")).toHaveTextContent("Local-only · Zero tracking");
   });
 });
