@@ -1,1 +1,92 @@
 @import "tailwindcss";
+
+[data-testid="resume-sheet"][data-page-size="letter"] {
+  max-width: 8.5in;
+  aspect-ratio: 8.5 / 11;
+}
+
+[data-testid="resume-sheet"][data-page-size="a4"] {
+  max-width: 210mm;
+  aspect-ratio: 210 / 297;
+}
+
+@page {
+  margin: 0.5in;
+}
+
+@page resume-letter {
+  size: letter portrait;
+  margin: 0.5in;
+}
+
+@page resume-a4 {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
+@media print {
+  html,
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-reset {
+    display: block !important;
+    max-width: none !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  [data-testid="resume-sheet"] {
+    max-width: none !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    aspect-ratio: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  [data-testid="resume-sheet"][data-page-size="letter"] {
+    page: resume-letter;
+  }
+
+  [data-testid="resume-sheet"][data-page-size="a4"] {
+    page: resume-a4;
+  }
+
+  [data-testid="resume-sheet"] h1,
+  [data-testid="resume-sheet"] h2,
+  [data-testid="resume-sheet"] h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  [data-testid="resume-sheet"] .resume-entry,
+  [data-testid="resume-sheet"] li {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
