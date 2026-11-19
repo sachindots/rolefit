@@ -181,7 +181,12 @@ describe("checkFormatProfile — harvard", () => {
     expect(byId["harvard-multipage-footer"].status).toBe("pass");
     expect(byId["harvard-pdf-output"].status).toBe("pass");
     expect(byId["harvard-bullets-per-role"].sourceKind).toBe("convention");
-    expect(byId["harvard-no-first-person"].sourceKind).toBe("official");
+    expect(byId["harvard-action-verbs"].sourceKind).toBe("convention");
+    expect(byId["harvard-no-first-person"].sourceKind).toBe("convention");
+    expect(byId["harvard-no-photo-graphics"].sourceKind).toBe("convention");
+    expect(byId["harvard-font-margins"].sourceKind).toBe("official");
+    expect(byId["harvard-multipage-footer"].sourceKind).toBe("official");
+    expect(byId["harvard-pdf-output"].sourceKind).toBe("official");
   });
 
   it("flags first-person pronouns (without false-positiving on uppercase US), >4 bullets per role, long bullets, photos, <5 yrs education order, and >1 page footer", () => {
@@ -257,8 +262,11 @@ describe("checkFormatProfile — london-uk", () => {
     );
     const a4ById = Object.fromEntries(a4Res.checks.map((c) => [c.id, c]));
     expect(a4ById["uk-a4-page-size"].status).toBe("pass");
+    expect(a4ById["uk-a4-page-size"].sourceKind).toBe("convention");
     expect(a4ById["uk-no-protected-fields"].status).toBe("pass");
+    expect(a4ById["uk-no-protected-fields"].sourceKind).toBe("convention");
     expect(a4ById["uk-page-length"].status).toBe("pass");
+    expect(a4ById["uk-page-length"].sourceKind).toBe("official");
     expect(a4ById["uk-reverse-chronological"].status).toBe("pass");
     expect(a4ById["uk-action-bullets"].status).toBe("pass");
 
@@ -322,11 +330,14 @@ describe("checkFormatProfile — faang", () => {
     );
     const byId = Object.fromEntries(res.checks.map((c) => [c.id, c]));
     expect(byId["faang-single-column"].status).toBe("pass");
+    expect(byId["faang-single-column"].sourceKind).toBe("convention");
     expect(byId["faang-page-length"].status).toBe("pass");
     expect(byId["faang-quantified-bullets"].status).toBe("pass");
     expect(byId["faang-xyz-bullets"].status).toBe("pass");
+    expect(byId["faang-xyz-bullets"].sourceKind).toBe("official");
     expect(byId["faang-skills-section"].status).toBe("pass");
     expect(byId["faang-no-tables-images"].status).toBe("pass");
+    expect(byId["faang-no-tables-images"].sourceKind).toBe("convention");
 
     // Multi-column flag fails
     const multiCol = checkFormatProfile(

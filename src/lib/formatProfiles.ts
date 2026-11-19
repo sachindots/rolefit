@@ -547,8 +547,8 @@ function checkHarvard(
       label: "Action-verb bullet openings",
       status: "warn",
       message: "Add experience or project bullets starting with strong action verbs.",
-      sourceKind: "official",
-      source: "Harvard FAS Office of Career Services",
+      sourceKind: "convention",
+      source: "Harvard career-guide consensus",
     });
   } else {
     const actionCount = bullets.filter(startsWithActionVerb).length;
@@ -561,8 +561,8 @@ function checkHarvard(
         ratio >= 0.9
           ? `${actionCount}/${bullets.length} bullets open with strong action verbs.`
           : `${bullets.length - actionCount} of ${bullets.length} bullets do not open with a strong action verb.`,
-      sourceKind: "official",
-      source: "Harvard FAS Office of Career Services",
+      sourceKind: "convention",
+      source: "Harvard career-guide consensus",
     });
   }
 
@@ -579,8 +579,8 @@ function checkHarvard(
         : summaryPronoun
           ? "Found first-person pronouns in the summary; write in implied first person."
           : "No first-person pronouns detected in bullets or summary.",
-    sourceKind: "official",
-    source: "Harvard FAS Office of Career Services",
+    sourceKind: "convention",
+    source: "Harvard career-guide consensus",
   });
 
   // 5. One-line bullets (under 220 chars)
@@ -638,8 +638,8 @@ function checkHarvard(
     message: hasGraphics
       ? "Detected a photo, image URL, or graphic reference; remove photos and graphics."
       : "No photos or graphics detected.",
-    sourceKind: "official",
-    source: "Harvard FAS Office of Career Services",
+    sourceKind: "convention",
+    source: "Harvard career-guide consensus",
   });
 
   // 9. Name + page-number footer advised when over one page
@@ -691,8 +691,8 @@ function checkLondonUk(
       foundProtected.length === 0
         ? "No photo, date of birth, marital status, or nationality fields detected."
         : `Detected restricted UK CV fields: ${foundProtected.join(", ")}. Remove them.`,
-    sourceKind: "official",
-    source: "Imperial College London / LSE Careers",
+    sourceKind: "convention",
+    source: "UK CV recruitment consensus",
   });
 
   // 2. At most 2 pages (1 advised under 5 years)
@@ -744,8 +744,8 @@ function checkLondonUk(
       settings.pageSize === "a4"
         ? "Page size is set to A4 (UK standard)."
         : "Page size is US Letter; switch to A4 for London / UK applications.",
-    sourceKind: "official",
-    source: "Imperial College London & LSE Careers",
+    sourceKind: "convention",
+    source: "UK CV format consensus",
   });
 
   // 5. Achievement-led action-verb bullets
@@ -802,8 +802,8 @@ function checkFaang(
     message: metrics.isMultiColumn
       ? `${templateDef.label} is flagged as multi-column; use a single-column layout for ATS parsing.`
       : `${templateDef.label} uses a single-column layout.`,
-    sourceKind: "official",
-    source: "Google Careers & ATS parsing guidance",
+    sourceKind: "convention",
+    source: "Public FAANG & ATS resume guide consensus",
   });
 
   // 2. One page under 10 years, two pages otherwise
@@ -900,8 +900,8 @@ function checkFaang(
     message: hasDisallowed
       ? "Detected table markup, text box reference, or image URL; keep resume plain text."
       : "No tables, text boxes, or images detected.",
-    sourceKind: "official",
-    source: "Google Careers & ATS parsing guidance",
+    sourceKind: "convention",
+    source: "Public FAANG & ATS resume guide consensus",
   });
 
   return checks;
