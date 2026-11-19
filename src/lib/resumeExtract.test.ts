@@ -458,4 +458,28 @@ describe("pure helper invariants & property checks", () => {
     const xml = `<w:document><w:body><w:p><w:r><w:t>&lt;img src=x onerror=alert(1)&gt;</w:t></w:r></w:p></w:body></w:document>`;
     expect(extractWordXmlText(xml)).toBe("<img src=x onerror=alert(1)>");
   });
+
+  it("extractWordXmlText scans 200KB of unclosed <w:t> and unclosed <!-- comments in O(N) time (< 50ms)", () => {
+    const unclosedRunsXml = `<w:document><w:body><w:p><w:t>Keep me</w:t>${"<w:t>a".repeat(
+      34_000,
+    )}</w:p></w:body></w:document>`;
+    expect(unclosedRunsXml.length).toBeGreaterThan(200_000);
+
+    const startRuns = performance.now();
+    const runsOut = extractWordXmlText(unclosedRunsXml);
+    const elapsedRuns = performance.now() - startRuns;
+    expect(runsOut).toBe("Keep me");
+    expect(elapsedRuns).toBeLessThan(50);
+
+    const unclosedCommentsXml = `<w:document><w:body><w:p><w:t>Visible</w:t></w:p>${"<!-- unclosed ".repeat(
+      15_000,
+    )}</w:body></w:document>`;
+    expect(unclosedCommentsXml.length).toBeGreaterThan(200_000);
+
+    const startComments = performance.now();
+    const commentsOut = extractWordXmlText(unclosedCommentsXml);
+    const elapsedComments = performance.now() - startComments;
+    expect(commentsOut).toBe("Visible");
+    expect(elapsedComments).toBeLessThan(50);
+  });
 });

@@ -48,8 +48,6 @@ const CONTROL_CHARS_EXCEPT_TAB_NL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u00
 
 const DOCX_HEADER_XML_RE = /^word\/header\d*\.xml$/i;
 const DOCX_VALID_ROOT_RE = /<(?:w:)?(?:document|hdr|body|p|t)\b/i;
-const DOCX_TOKEN_RE =
-  /<(?:w:)?t(?=[>\s])(?![^>]*\/>)[^>]*>([\s\S]*?)<\/(?:w:)?t>|<(?:w:)?(br|cr)(?=[>\s/])[^>]*\/?>|<(?:w:)?(tab|ptab)(?=[>\s/])[^>]*\/?>|<\/?(?:w:)?(p)(?=[>\s/])[^>]*\/?>/gi;
 const XML_ENTITY_RE = /&(?:(amp|lt|gt|quot|apos)|#(\d{1,7})|#x([0-9a-fA-F]{1,6}));/g;
 
 function startsWithBytes(bytes: Uint8Array, prefix: readonly number[]): boolean {
@@ -145,22 +143,92 @@ export function sanitizeExtractedText(
   return { text, warnings };
 }
 
+function stripXmlComments(xml: string): string {
+  const firstOpen = xml.indexOf("<!--");
+  if (firstOpen === -1) return xml;
+
+  const parts: string[] = [];
+  let cursor = 0;
+  let open = firstOpen;
+
+  while (open !== -1) {
+    if (open > cursor) {
+      parts.push(xml.slice(cursor, open));
+    }
+    const close = xml.indexOf("-->", open + 4);
+    if (close === -1) {
+      return parts.join("");
+    }
+    cursor = close + 3;
+    open = xml.indexOf("<!--", cursor);
+  }
+
+  if (cursor < xml.length) {
+    parts.push(xml.slice(cursor));
+  }
+  return parts.join("");
+}
+
+function trimTrailingSpaces(line: string): string {
+  let end = line.length;
+  while (end > 0 && line.charCodeAt(end - 1) === 0x20) {
+    end -= 1;
+  }
+  return end === line.length ? line : line.slice(0, end);
+}
+
+function parseXmlTagName(rawTag: string): {
+  name: string;
+  isClosing: boolean;
+  isSelfClosing: boolean;
+} {
+  let start = 0;
+  const len = rawTag.length;
+  while (start < len && rawTag.charCodeAt(start) <= 0x20) start += 1;
+
+  let isClosing = false;
+  if (start < len && rawTag.charCodeAt(start) === 0x2f) {
+    isClosing = true;
+    start += 1;
+    while (start < len && rawTag.charCodeAt(start) <= 0x20) start += 1;
+  }
+
+  let nameEnd = start;
+  while (nameEnd < len) {
+    const code = rawTag.charCodeAt(nameEnd);
+    if (code <= 0x20 || code === 0x2f) break;
+    nameEnd += 1;
+  }
+
+  let end = len;
+  while (end > nameEnd && rawTag.charCodeAt(end - 1) <= 0x20) end -= 1;
+  const isSelfClosing = !isClosing && end > start && rawTag.charCodeAt(end - 1) === 0x2f;
+
+  return {
+    name: rawTag.slice(start, nameEnd).toLowerCase(),
+    isClosing,
+    isSelfClosing,
+  };
+}
+
 export function extractWordXmlText(xml: string): string {
   if (/<!ENTITY\b/i.test(xml)) {
     throw new RejectError("DOCX XML contains forbidden XML entity declarations.");
   }
-  const withoutComments = xml.replace(/<!--[\s\S]*?-->/g, "");
+  const withoutComments = stripXmlComments(xml);
   if (!DOCX_VALID_ROOT_RE.test(withoutComments)) {
     throw new RejectError("Invalid or corrupt DOCX XML content.");
   }
 
   const paragraphs: string[] = [];
   let current = "";
+  let inTextRun = false;
+  let runBuffer = "";
 
   const flushParagraph = (): void => {
     const cleaned = current
       .split("\n")
-      .map((line) => line.replace(/ +$/g, ""))
+      .map(trimTrailingSpaces)
       .join("\n")
       .trim();
     if (cleaned !== "") {
@@ -169,20 +237,49 @@ export function extractWordXmlText(xml: string): string {
     current = "";
   };
 
-  DOCX_TOKEN_RE.lastIndex = 0;
-  let match: RegExpExecArray | null;
-  while ((match = DOCX_TOKEN_RE.exec(withoutComments)) !== null) {
-    const [, runText, lineBreak, tab, paragraph] = match;
-    if (runText !== undefined) {
-      const strippedTags = runText.replace(/<[^>]*>/g, "");
-      current += decodeXmlEntities(strippedTags);
-    } else if (lineBreak !== undefined) {
-      current += "\n";
-    } else if (tab !== undefined) {
-      current += "\t";
-    } else if (paragraph !== undefined) {
+  let cursor = 0;
+  const len = withoutComments.length;
+  while (cursor < len) {
+    const tagOpen = withoutComments.indexOf("<", cursor);
+    if (tagOpen === -1) break;
+
+    if (inTextRun && tagOpen > cursor) {
+      runBuffer += withoutComments.slice(cursor, tagOpen);
+    }
+
+    const tagClose = withoutComments.indexOf(">", tagOpen + 1);
+    if (tagClose === -1) break;
+
+    const { name, isClosing, isSelfClosing } = parseXmlTagName(
+      withoutComments.slice(tagOpen + 1, tagClose),
+    );
+
+    if (name === "w:t" || name === "t") {
+      if (isClosing) {
+        if (inTextRun) {
+          current += decodeXmlEntities(runBuffer);
+        }
+        inTextRun = false;
+        runBuffer = "";
+      } else if (!isSelfClosing) {
+        inTextRun = true;
+        runBuffer = "";
+      }
+    } else if (name === "w:br" || name === "br" || name === "w:cr" || name === "cr") {
+      if (!isClosing) {
+        current += "\n";
+      }
+    } else if (name === "w:tab" || name === "tab" || name === "w:ptab" || name === "ptab") {
+      if (!isClosing) {
+        current += "\t";
+      }
+    } else if (name === "w:p" || name === "p") {
+      inTextRun = false;
+      runBuffer = "";
       flushParagraph();
     }
+
+    cursor = tagClose + 1;
   }
   flushParagraph();
 
