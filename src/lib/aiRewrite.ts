@@ -282,6 +282,22 @@ const HTTP_ERRORS: Record<number, string> = {
   429: "Gemini rate limit or quota reached. Wait a moment and try again.",
 };
 
+async function readGeminiError(response: Response): Promise<string | null> {
+  try {
+    const parsed: unknown = JSON.parse((await response.text()).slice(0, 20_000));
+    const err = isObject(parsed) && isObject(parsed.error) ? parsed.error : null;
+    if (!err) return null;
+    const details = Array.isArray(err.details) ? err.details : [];
+    if (details.some((d) => isObject(d) && d.reason === "API_KEY_INVALID")) {
+      return "Gemini says this API key is not valid. Create a fresh key in Google AI Studio and paste it in AI Settings.";
+    }
+    if (response.status === 400 && typeof err.message === "string") return `Gemini: ${err.message.slice(0, 200)}`;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 async function callGemini(settings: AiSettings, system: string, user: string, timeoutMs: number, fetchFn: FetchFn, external?: AbortSignal): Promise<CallResult> {
   if (!isValidApiKey(settings.apiKey)) return { ok: false, error: "Add a Gemini API key in AI Settings first." };
   if (!isGeminiModelId(settings.model)) return { ok: false, error: "Unknown Gemini model." };
@@ -306,6 +322,8 @@ async function callGemini(settings: AiSettings, system: string, user: string, ti
       signal: controller.signal,
     });
     if (!response.ok) {
+      const detail = await readGeminiError(response);
+      if (detail) return { ok: false, error: detail };
       return { ok: false, error: HTTP_ERRORS[response.status] ?? (response.status >= 500 ? "Gemini is temporarily unavailable. Try again shortly." : `Gemini returned an error (HTTP ${response.status}).`) };
     }
     const body = await response.text();

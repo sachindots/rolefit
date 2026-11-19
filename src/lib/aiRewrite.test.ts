@@ -323,6 +323,13 @@ describe("rewriteSectionWithGemini: failures never throw or leak the key", () =>
     }
   });
 
+  it("explains an invalid key reported as HTTP 400 API_KEY_INVALID", async () => {
+    const body = JSON.stringify({ error: { code: 400, message: "API key not valid.", details: [{ reason: "API_KEY_INVALID" }] } });
+    const r = await rewriteExp(new Response(body, { status: 400 }));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/API key is not valid/);
+  });
+
   it("handles network failure without leaking the key", async () => {
     const f = vi.fn(async () => { throw new TypeError(`Failed to fetch https://x?key=${KEY}`); });
     const r = await rewriteSectionWithGemini({ ...base({ kind: "summary", summary: "s" }) } as RewriteParams<{ kind: "summary"; summary: string }>, f);
