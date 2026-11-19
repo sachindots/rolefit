@@ -1,4 +1,4 @@
-import { Download, FilePlus2, Moon, RotateCcw, ShieldCheck, Sun, Upload } from "lucide-react";
+import { Download, FilePlus2, Moon, RotateCcw, ShieldCheck, Sparkles, Sun, Upload } from "lucide-react";
 import { useRef, useState, type ChangeEvent } from "react";
 import { MAX_BACKUP_BYTES } from "../lib/backup";
 import type { ThemeMode } from "../types/resume";
@@ -6,7 +6,9 @@ import { ConfirmDialog } from "./ConfirmDialog";
 
 export interface StudioHeaderProps {
   theme: ThemeMode;
+  aiActive?: boolean;
   onToggleTheme: () => void;
+  onOpenAiSettings?: () => void;
   onLoadSample: () => void;
   onStartBlank: () => void;
   onExportBackup: () => void;
@@ -31,7 +33,9 @@ function readFileText(file: File): Promise<string> {
 
 export function StudioHeader({
   theme,
+  aiActive = false,
   onToggleTheme,
+  onOpenAiSettings,
   onLoadSample,
   onStartBlank,
   onExportBackup,
@@ -69,9 +73,12 @@ export function StudioHeader({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">RoleFit</h1>
-                <p className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300">
+                <p
+                  data-testid="privacy-badge"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300"
+                >
                   <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
-                  Local-only · Zero tracking
+                  {aiActive ? "Local-first · AI via Gemini (on click)" : "Local-only · Zero tracking"}
                 </p>
               </div>
               <p className="truncate text-xs text-slate-500 dark:text-slate-400">
@@ -110,6 +117,18 @@ export function StudioHeader({
               className="sr-only"
               onChange={handleFileChange}
             />
+
+            {onOpenAiSettings && (
+              <button
+                type="button"
+                onClick={onOpenAiSettings}
+                data-testid="ai-settings-button"
+                className={headerButtonClass}
+              >
+                <Sparkles className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" aria-hidden />
+                AI Settings
+              </button>
+            )}
 
             <button
               type="button"

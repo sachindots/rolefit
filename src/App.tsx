@@ -1,17 +1,37 @@
 import { AlertCircle, CheckCircle2, Eye, FileEdit, Printer, Target, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { StudioHeader } from "./components/StudioHeader";
+import { AiSettingsModal } from "./components/ai/AiSettingsModal";
+import { AiTailorModal } from "./components/ai/AiTailorModal";
 import { ResumeEditor } from "./components/editor/ResumeEditor";
 import { JdMatchPanel } from "./components/match/JdMatchPanel";
 import { ResumePreview } from "./components/preview/ResumePreview";
 import { PAGE_SIZE_LIST, TEMPLATE_LIST } from "./components/preview/templates";
 import { createSampleWorkspace } from "./data/sampleWorkspace";
+import type { RewriteTarget } from "./lib/aiRewrite";
+import {
+  clearAiSettings,
+  loadAiSettings,
+  saveAiSettings,
+  type AiSettings,
+  type GeminiModelId,
+  type KeyStorageMode,
+} from "./lib/aiSettings";
 import { auditResume } from "./lib/atsAudit";
 import { downloadBackupFile, importBackupJson } from "./lib/backup";
 import { analyzeJobDescription } from "./lib/jdEngine";
 import { createEmptyWorkspace, validateWorkspaceState } from "./lib/schema";
 import { loadWorkspaceState, saveWorkspaceState } from "./lib/storage";
-import type { PageSize, ResumeData, TemplateId, ThemeMode, WorkspaceState } from "./types/resume";
+import type {
+  ExperienceItem,
+  PageSize,
+  ProjectItem,
+  ResumeData,
+  SkillGroup,
+  TemplateId,
+  ThemeMode,
+  WorkspaceState,
+} from "./types/resume";
 
 type WorkspaceTab = "editor" | "match" | "preview";
 
@@ -26,6 +46,9 @@ export default function App() {
   const [saveFailed, setSaveFailed] = useState(false);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("editor");
   const [banner, setBanner] = useState<StudioBanner | null>(null);
+  const [aiSettings, setAiSettings] = useState<AiSettings>(loadAiSettings);
+  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
+  const [tailorTarget, setTailorTarget] = useState<RewriteTarget | null>(null);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", workspace.theme === "dark");
@@ -96,6 +119,56 @@ export default function App() {
     if (typeof window.print === "function") window.print();
   };
 
+  const handleSaveAiSettings = (input: {
+    apiKey: string;
+    model: GeminiModelId;
+    storageMode: KeyStorageMode;
+  }) => {
+    const res = saveAiSettings(input);
+    if (res.ok) {
+      setAiSettings(loadAiSettings());
+      setBanner({ kind: "success", message: "Gemini AI settings saved." });
+    }
+    return res;
+  };
+
+  const handleClearAiSettings = () => {
+    clearAiSettings();
+    setAiSettings(loadAiSettings());
+    setBanner({ kind: "success", message: "Gemini API key cleared." });
+  };
+
+  const handleAcceptSummaryRewrite = (summary: string) => {
+    updateResume({ ...workspace.resume, summary });
+    setBanner({ kind: "success", message: "Tailored summary applied." });
+  };
+
+  const handleAcceptExperienceRewrite = (updated: ExperienceItem) => {
+    updateResume({
+      ...workspace.resume,
+      experience: workspace.resume.experience.map((item) =>
+        item.id === updated.id ? updated : item,
+      ),
+    });
+    setBanner({ kind: "success", message: "Tailored experience bullets applied." });
+  };
+
+  const handleAcceptProjectRewrite = (updated: ProjectItem) => {
+    updateResume({
+      ...workspace.resume,
+      projects: workspace.resume.projects.map((item) =>
+        item.id === updated.id ? updated : item,
+      ),
+    });
+    setBanner({ kind: "success", message: "Tailored project applied." });
+  };
+
+  const handleAcceptSkillsRewrite = (skills: SkillGroup[]) => {
+    updateResume({ ...workspace.resume, skills });
+    setBanner({ kind: "success", message: "Tailored skills applied." });
+  };
+
+  const aiActive = aiSettings.source !== "none" && Boolean(aiSettings.apiKey);
   const matchResult = analyzeJobDescription(workspace.resume, workspace.jobDescription);
   const auditResult = auditResume(workspace.resume);
 
@@ -109,7 +182,9 @@ export default function App() {
     >
       <StudioHeader
         theme={workspace.theme}
+        aiActive={aiActive}
         onToggleTheme={toggleTheme}
+        onOpenAiSettings={() => setAiSettingsOpen(true)}
         onLoadSample={handleLoadSample}
         onStartBlank={handleStartBlank}
         onExportBackup={handleExportBackup}
@@ -238,7 +313,11 @@ export default function App() {
                 activeTab === "preview" ? "lg:block" : ""
               } lg:max-h-[calc(100vh-9.5rem)] lg:overflow-y-auto lg:pr-1`}
             >
-              <ResumeEditor resume={workspace.resume} onChange={updateResume} />
+              <ResumeEditor
+                resume={workspace.resume}
+                onChange={updateResume}
+                onTailorTarget={(target) => setTailorTarget(target)}
+              />
             </section>
 
             <section
@@ -333,6 +412,30 @@ export default function App() {
           </section>
         </div>
       </main>
+
+      <AiSettingsModal
+        open={aiSettingsOpen}
+        settings={aiSettings}
+        onClose={() => setAiSettingsOpen(false)}
+        onSave={handleSaveAiSettings}
+        onClear={handleClearAiSettings}
+      />
+
+      <AiTailorModal
+        open={tailorTarget !== null}
+        target={tailorTarget}
+        resume={workspace.resume}
+        jobDescription={workspace.jobDescription}
+        matchResult={matchResult}
+        auditResult={auditResult}
+        settings={aiSettings}
+        onClose={() => setTailorTarget(null)}
+        onOpenSettings={() => setAiSettingsOpen(true)}
+        onAcceptSummary={handleAcceptSummaryRewrite}
+        onAcceptExperience={handleAcceptExperienceRewrite}
+        onAcceptProject={handleAcceptProjectRewrite}
+        onAcceptSkills={handleAcceptSkillsRewrite}
+      />
     </div>
   );
 }

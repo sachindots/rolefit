@@ -1,3 +1,4 @@
+import { Sparkles } from "lucide-react";
 import { LIMITS, createId, moveItem } from "../../lib/schema";
 import type { EducationItem, SkillGroup } from "../../types/resume";
 import { ListField, RowControls, SectionCard, TextField, removeAt, replaceAt } from "./SectionCard";
@@ -5,12 +6,29 @@ import { ListField, RowControls, SectionCard, TextField, removeAt, replaceAt } f
 interface SkillsProps {
   items: SkillGroup[];
   onChange: (items: SkillGroup[]) => void;
+  onTailorSkills?: (groups: SkillGroup[]) => void;
 }
 
-export function SkillsEditor({ items, onChange }: SkillsProps) {
+const tailorButtonClass =
+  "inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50/70 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-300 dark:border-indigo-800/80 dark:bg-indigo-950/50 dark:text-indigo-300 dark:hover:bg-indigo-900/60";
+
+export function SkillsEditor({ items, onChange, onTailorSkills }: SkillsProps) {
   const add = () => onChange([...items, { id: createId(), category: "", items: [] }]);
   return (
     <SectionCard title="Skills" count={items.length} action={{ label: "Add skill group", onClick: add, disabled: items.length >= LIMITS.skills }}>
+      {onTailorSkills && items.length > 0 && (
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            data-testid="tailor-skills-button"
+            onClick={() => onTailorSkills(items)}
+            className={tailorButtonClass}
+          >
+            <Sparkles className="h-3.5 w-3.5" aria-hidden />
+            Tailor with AI
+          </button>
+        </div>
+      )}
       {items.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">No skill groups yet.</p>}
       {items.map((item, i) => {
         const label = `skill group ${i + 1}`;
