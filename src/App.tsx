@@ -1,8 +1,23 @@
-import { AlertCircle, CheckCircle2, Eye, FileEdit, Printer, Target, X } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowRight,
+  CheckCircle2,
+  ClipboardCheck,
+  Eye,
+  FileEdit,
+  Printer,
+  Target,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { StudioHeader } from "./components/StudioHeader";
 import { AiSettingsModal } from "./components/ai/AiSettingsModal";
 import { AiTailorModal } from "./components/ai/AiTailorModal";
+import {
+  AtsFormatPanel,
+  getTopAtsFixes,
+  type EditorSectionTarget,
+} from "./components/ats/AtsFormatPanel";
 import { ResumeEditor } from "./components/editor/ResumeEditor";
 import { JdMatchPanel } from "./components/match/JdMatchPanel";
 import { ResumePreview } from "./components/preview/ResumePreview";
@@ -19,6 +34,7 @@ import {
   type KeyStorageMode,
 } from "./lib/aiSettings";
 import { auditResume } from "./lib/atsAudit";
+import { scoreResumeForAts } from "./lib/atsScore";
 import { downloadBackupFile, importBackupJson } from "./lib/backup";
 import { analyzeJobDescription } from "./lib/jdEngine";
 import { createEmptyWorkspace, validateWorkspaceState } from "./lib/schema";
@@ -34,11 +50,12 @@ import type {
   WorkspaceState,
 } from "./types/resume";
 
-type WorkspaceTab = "editor" | "match" | "preview";
+type WorkspaceTab = "editor" | "match" | "ats" | "preview";
 
 interface StudioBanner {
   kind: "success" | "warning" | "error";
   message: string;
+  importedResume?: boolean;
 }
 
 export default function App() {
@@ -51,10 +68,35 @@ export default function App() {
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [tailorTarget, setTailorTarget] = useState<RewriteTarget | null>(null);
+  const [pendingSectionJump, setPendingSectionJump] = useState<EditorSectionTarget | null>(null);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", workspace.theme === "dark");
   }, [workspace.theme]);
+
+  useEffect(() => {
+    if (activeTab !== "editor" || !pendingSectionJump) return;
+    const sectionEl = document.querySelector<HTMLElement>(
+      `#workspace-editor-pane section[aria-label="${pendingSectionJump}"]`,
+    );
+    if (sectionEl) {
+      const toggleBtn = sectionEl.querySelector<HTMLButtonElement>("header button[aria-expanded]");
+      if (toggleBtn && toggleBtn.getAttribute("aria-expanded") === "false") {
+        toggleBtn.click();
+      }
+      if (typeof sectionEl.scrollIntoView === "function") {
+        sectionEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      const firstField = sectionEl.querySelector<HTMLElement>("input, textarea, button");
+      firstField?.focus();
+    }
+    setPendingSectionJump(null);
+  }, [activeTab, pendingSectionJump]);
+
+  const handleJumpToSection = (section: EditorSectionTarget) => {
+    setActiveTab("editor");
+    setPendingSectionJump(section);
+  };
 
   const updateWorkspace = (next: WorkspaceState) => {
     setWorkspace(next);
@@ -173,12 +215,22 @@ export default function App() {
   const handleApplyUploadedResume = (resume: ResumeData, fileName: string) => {
     updateResume(resume);
     setUploadModalOpen(false);
-    setBanner({ kind: "success", message: `Resume imported from ${fileName}.` });
+    setBanner({
+      kind: "success",
+      message: `Resume imported from ${fileName}.`,
+      importedResume: true,
+    });
   };
 
   const aiActive = aiSettings.source !== "none" && Boolean(aiSettings.apiKey);
   const matchResult = analyzeJobDescription(workspace.resume, workspace.jobDescription);
   const auditResult = auditResume(workspace.resume);
+  const atsScore = scoreResumeForAts(workspace.resume, {
+    jobDescription: workspace.jobDescription,
+  });
+  const importedTopFixes = banner?.importedResume
+    ? getTopAtsFixes(workspace.resume, workspace.jobDescription, 3)
+    : [];
 
   return (
     <div
@@ -222,7 +274,7 @@ export default function App() {
           <div
             role={banner.kind === "error" ? "alert" : "status"}
             data-testid="studio-banner"
-            className={`no-print mb-4 flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm ${
+            className={`no-print mb-4 rounded-md border px-3 py-2.5 text-sm ${
               banner.kind === "error"
                 ? "border-red-200 bg-red-50 text-red-800 dark:border-red-800/80 dark:bg-red-950/60 dark:text-red-200"
                 : banner.kind === "warning"
@@ -230,22 +282,77 @@ export default function App() {
                   : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/80 dark:bg-emerald-950/60 dark:text-emerald-200"
             }`}
           >
-            <div className="flex min-w-0 items-center gap-2">
-              {banner.kind === "error" ? (
-                <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
-              ) : (
-                <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
-              )}
-              <span className="min-w-0 break-words">{banner.message}</span>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                {banner.kind === "error" ? (
+                  <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
+                )}
+                <span className="min-w-0 break-words font-medium">{banner.message}</span>
+                {banner.importedResume && (
+                  <>
+                    <span
+                      data-testid="post-upload-ats-score"
+                      className="inline-flex items-center rounded-full bg-emerald-700 px-2.5 py-0.5 text-xs font-bold text-white dark:bg-emerald-600"
+                    >
+                      ATS Score: {atsScore.total}/100
+                    </span>
+                    <button
+                      type="button"
+                      data-testid="post-upload-open-ats"
+                      onClick={() => setActiveTab("ats")}
+                      className="inline-flex items-center gap-1 rounded border border-emerald-300 bg-white px-2 py-0.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-200 dark:hover:bg-emerald-950"
+                    >
+                      <span>Open ATS &amp; Format</span>
+                      <ArrowRight className="h-3 w-3" aria-hidden />
+                    </button>
+                  </>
+                )}
+              </div>
+              <button
+                type="button"
+                aria-label="Dismiss notice"
+                onClick={() => setBanner(null)}
+                className="rounded p-1 opacity-75 hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden />
+              </button>
             </div>
-            <button
-              type="button"
-              aria-label="Dismiss notice"
-              onClick={() => setBanner(null)}
-              className="rounded p-1 opacity-75 hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
-            >
-              <X className="h-3.5 w-3.5" aria-hidden />
-            </button>
+
+            {banner.importedResume && (
+              <div
+                data-testid="post-upload-ats-summary"
+                className="mt-2 border-t border-emerald-200/80 pt-2 text-xs dark:border-emerald-800/70"
+              >
+                {importedTopFixes.length > 0 ? (
+                  <div>
+                    <p className="font-semibold text-emerald-950 dark:text-emerald-100">
+                      Top {importedTopFixes.length}{" "}
+                      {importedTopFixes.length === 1 ? "fix" : "fixes"} for imported resume
+                      {atsScore.hasJobDescription ? " (includes active JD keywords)" : ""}:
+                    </p>
+                    <ol
+                      data-testid="post-upload-ats-fixes"
+                      className="mt-1 list-decimal space-y-1 pl-4 text-emerald-900 dark:text-emerald-200"
+                    >
+                      {importedTopFixes.map((fix) => (
+                        <li key={fix.id} className="break-words">
+                          <span className="font-semibold">{fix.label}:</span> {fix.detail}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ) : (
+                  <p
+                    data-testid="post-upload-ats-fixes"
+                    className="font-medium text-emerald-900 dark:text-emerald-200"
+                  >
+                    All ATS readiness checks pass.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -254,7 +361,7 @@ export default function App() {
             <div
               role="tablist"
               aria-label="Workspace view"
-              className="mb-3 grid grid-cols-3 gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-xs lg:grid-cols-2 dark:border-slate-800 dark:bg-slate-900"
+              className="mb-3 grid grid-cols-2 gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-xs sm:grid-cols-4 lg:grid-cols-3 dark:border-slate-800 dark:bg-slate-900"
             >
               <button
                 type="button"
@@ -295,6 +402,32 @@ export default function App() {
                   }`}
                 >
                   {matchResult.score}%
+                </span>
+              </button>
+
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === "ats"}
+                aria-controls="workspace-ats-pane"
+                onClick={() => setActiveTab("ats")}
+                className={`inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 ${
+                  activeTab === "ats"
+                    ? "bg-indigo-600 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                }`}
+              >
+                <ClipboardCheck className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span className="truncate">ATS &amp; Format</span>
+                <span
+                  data-testid="tab-ats-score"
+                  className={`rounded-full px-1.5 py-0.2 text-[11px] font-bold ${
+                    activeTab === "ats"
+                      ? "bg-white/20 text-white"
+                      : "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300"
+                  }`}
+                >
+                  {atsScore.total}
                 </span>
               </button>
 
@@ -342,6 +475,23 @@ export default function App() {
                 onJobDescriptionChange={updateJobDescription}
                 matchResult={matchResult}
                 auditResult={auditResult}
+              />
+            </section>
+
+            <section
+              id="workspace-ats-pane"
+              aria-label="ATS and format checks"
+              className={`min-w-0 ${
+                activeTab === "ats" ? "block" : "hidden"
+              } lg:max-h-[calc(100vh-9.5rem)] lg:overflow-y-auto lg:pr-1`}
+            >
+              <AtsFormatPanel
+                resume={workspace.resume}
+                jobDescription={workspace.jobDescription}
+                template={workspace.template}
+                pageSize={workspace.pageSize}
+                atsScore={atsScore}
+                onJumpToSection={handleJumpToSection}
               />
             </section>
           </div>
@@ -425,6 +575,7 @@ export default function App() {
       <ResumeUploadModal
         open={uploadModalOpen}
         aiSettings={aiSettings}
+        jobDescription={workspace.jobDescription}
         onClose={() => setUploadModalOpen(false)}
         onApply={handleApplyUploadedResume}
       />

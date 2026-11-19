@@ -84,6 +84,11 @@ describe("ResumeUploadModal", () => {
     expect(within(summary).getByText(/2 groups/i)).toBeInTheDocument();
     expect(within(summary).getByText(/1 entry/i)).toBeInTheDocument();
 
+    // Displays ATS Readiness Score and top fixes for the uploaded resume
+    expect(screen.getByTestId("upload-ats-summary")).toBeInTheDocument();
+    expect(screen.getByTestId("upload-ats-score")).toHaveTextContent(/\d+\/100/);
+    expect(screen.getByTestId("upload-ats-top-fixes")).toBeInTheDocument();
+
     // Unmapped lines (CERTIFICATIONS section) are collapsible
     const unmappedSection = screen.getByTestId("unmapped-lines-section");
     expect(screen.queryByTestId("unmapped-lines-list")).not.toBeInTheDocument();
@@ -322,5 +327,32 @@ describe("ResumeUploadModal", () => {
     fireEvent.click(screen.getByTestId("apply-resume-button"));
     expect(onApply).toHaveBeenCalledTimes(1);
     expect(onApply.mock.calls[0][0].projects[0].technologies).toEqual(["Go", "Rust"]);
+  });
+
+  it("feeds the active job description into the uploaded resume ATS score and top fixes", async () => {
+    render(
+      <ResumeUploadModal
+        open={true}
+        aiSettings={NO_KEY_SETTINGS}
+        jobDescription="Seeking a Staff Engineer skilled in TypeScript, Go, PostgreSQL, C++, and GraphQL."
+        onClose={vi.fn()}
+        onApply={vi.fn()}
+      />,
+    );
+
+    const file = new File([SAMPLE_TXT_RESUME], "jordan-jd.txt", { type: "text/plain" });
+    fireEvent.change(screen.getByTestId("resume-upload-input"), { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("upload-ats-summary")).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId("upload-ats-summary")).toHaveTextContent(
+      /Scored with active job description keyword matching/i,
+    );
+    const fixesList = screen.getByTestId("upload-ats-top-fixes");
+    expect(within(fixesList).getAllByRole("listitem").length).toBeLessThanOrEqual(3);
+    expect(fixesList).toHaveTextContent(/Keyword match/i);
+    expect(fixesList).toHaveTextContent(/PostgreSQL|C\+\+|GraphQL/);
   });
 });

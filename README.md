@@ -30,8 +30,68 @@ RoleFit is a local-first resume builder and job-description match studio that ru
 
 - **Supported Formats:** Upload existing `.pdf`, `.docx`, or `.txt` resumes via drag-and-drop or file picker from **Upload Resume** in the studio header.
 - **100% Client-Side Extraction & Hardening:** Files are extracted and parsed directly in your browser with a `5 MB` file size limit, magic-byte signature validation, PDF page cap, and DOCX zip-bomb, entry-count, and XML size checks. Nothing is sent over the network during local extraction.
-- **Review-Before-Import Modal:** Before replacing your active resume, inspect extracted Contact fields, Summary preview, Experience, Projects, Skills, and Education counts, along with any extraction warnings (such as scanned PDFs or truncated fields) and a collapsible **Unmapped lines** list. Clicking **Apply to Editor** replaces only the resume fields while keeping your job description, template, page size, and theme intact.
+- **Review-Before-Import Modal & Post-Upload ATS Score:** Before replacing your active resume, inspect extracted Contact fields, Summary preview, Experience, Projects, Skills, and Education counts, extraction warnings (such as scanned PDFs or truncated fields), a collapsible **Unmapped lines** list, and the uploaded resume's **0–100 ATS Readiness Score** with its **top 3 fixes**. Clicking **Apply to Editor** replaces only the resume fields (keeping your job description, template, page size, and theme intact) and displays the imported resume's ATS score and top 3 fixes in the studio banner. If a job description is present in the JD Match panel, it feeds the keyword match component automatically.
 - **Optional Gemini-Enhanced Extraction:** When a Gemini API key is configured in **AI Settings**, you can explicitly click **Enhance extraction with Gemini** inside the review modal to structure complex or multi-column layouts. Output is validated against the same strict schema and anti-fabrication checks, and any error leaves your local parsed draft intact.
+
+## ATS Scoring Model & Format Standard Profiles
+
+The **ATS & Format** panel (`src/components/ats/AtsFormatPanel.tsx`) combines a deterministic `0–100` ATS readiness score (`src/lib/atsScore.ts`) with live format profile checks (`src/lib/formatProfiles.ts`) across **Harvard**, **London UK CV**, and **FAANG** standards. Every status indicator pairs an icon with an explicit text label (`Pass`, `Warn`, `Fail`, `Official`, `Convention`) so the UI never relies on color alone, and non-passing checks that map to a resume section link directly to that section in the editor.
+
+### 1. Deterministic ATS Readiness Score (0–100)
+
+`scoreResumeForAts(resume, { jobDescription })` computes a `0–100` total across five weighted categories. When no job description is active in the JD Match panel, the 25-point Keyword Match share is redistributed proportionally across the other four categories (`33 / 27 / 0 / 27 / 13`):
+
+| Category | Base Weight (with JD) | Redistributed Weight (no JD) | What It Checks |
+| :--- | :---: | :---: | :--- |
+| **Parse readiness** | `25` | `33` | Contact full name, email (`user@domain.tld`), phone (`7–15` digits), and location are present and parseable. |
+| **Section structure** | `20` | `27` | Experience, Education, and Skills sections are populated and role/education dates parse cleanly. |
+| **Keyword match** | `25` | `0` | Job-description keyword coverage via `analyzeJobDescription` (`jdEngine.ts`) when a target JD is present. |
+| **Bullet quality** | `20` | `27` | Reuses `auditResume` (`atsAudit.ts`) findings for strong action-verb openings, measurable numbers/outcomes, and `30–220` character bullet length. |
+| **Length and density** | `10` | `13` | Total resume word count stays within the `150–900` word target range. |
+
+### 2. Format Profiles: Official vs. Convention Checks
+
+`checkFormatProfile(resume, { template, pageSize }, profileId)` evaluates the active resume, template typography/margins, and paper size against three profile standards. Every check carries an explicit `sourceKind` label distinguishing **`official`** rules (published directly by the institution's career service or engineering hiring guide) from **`convention`** rules (widely repeated career-guide or recruiter consensus). Page length uses a documented words-per-page estimate (`WORDS_PER_PAGE`: Classic Executive `450` Letter / `470` A4, Modern Minimal `425` Letter / `440` A4, Technical Compact `575` Letter / `600` A4, marked `isEstimate: true`).
+
+#### Harvard Profile (`harvard`)
+
+| Check | Classification | Source | Rule |
+| :--- | :---: | :--- | :--- |
+| Reverse-chronological experience | `official` | Harvard FAS Office of Career Services | Experience roles are ordered from most recent to oldest. |
+| Education placement (`< 5` yrs experience) | `official` | Harvard FAS Office of Career Services | Advises placing Education above Experience when total experience is under 5 years. |
+| Action-verb bullet openings | `convention` | Harvard career-guide consensus | Bullets open with strong past/present action verbs rather than passive phrases. |
+| No first-person pronouns (`I`, `my`, `we`) | `convention` | Harvard career-guide consensus | Bullets and summary omit first-person pronouns. |
+| Concise bullets (`< 220` chars) | `convention` | Harvard resume guide consensus | Individual bullets stay under `220` characters (`1–2` printed lines). |
+| At most 4 bullets per role | `convention` | Harvard career-guide consensus | Warns when an experience role exceeds 4 bullets. |
+| Font `10–12pt` & margins `0.5–1in` | `official` | Harvard FAS Office of Career Services | Verifies body font size (`10–12pt`) and margins (`0.5–1in`) against the selected template's styles (noting print `@page` margins). |
+| No photo or graphics | `convention` | Harvard career-guide consensus | Flags photo, image URL, or graphic references. |
+| Multi-page name & page-number footer | `official` | Harvard T.H. Chan HSPH Career Services | Warns when estimated length exceeds 1 page so exported PDFs include a name + page-number footer. |
+| PDF output format | `official` | Harvard FAS Office of Career Services | Recommends exporting as PDF (`Print to PDF`) to lock layout with selectable text. |
+
+#### London / UK CV Profile (`london-uk`)
+
+| Check | Classification | Source | Rule |
+| :--- | :---: | :--- | :--- |
+| No photo, DOB, marital status, or nationality | `convention` | UK CV recruitment consensus | Fails if restricted personal details (photo, date of birth, marital status, nationality) appear in the CV. |
+| Page length (max 2 pages; 1 under 5 yrs) | `official` | Imperial College London & London Business School | Fails over 2 estimated pages; warns at 2 pages when experience is under 5 years. |
+| Reverse-chronological experience | `official` | LSE Careers & London Business School | Experience roles are listed most recent first. |
+| A4 page size | `convention` | UK CV format consensus | Passes on `A4`; warns when paper size is set to US `Letter`. |
+| Achievement-led action-verb bullets | `official` | London Business School Career Centre | Checks that bullets lead with strong action verbs and include measurable outcomes. |
+
+#### FAANG Profile (`faang`)
+
+| Check | Classification | Source | Rule |
+| :--- | :---: | :--- | :--- |
+| Single-column ATS layout | `convention` | Public FAANG & ATS resume guide consensus | Passes on single-column templates; fails if a template is flagged as multi-column. |
+| Page length (`1` page `< 10` yrs; `2` pages `10+` yrs) | `convention` | Public FAANG resume guide consensus | Enforces 1 estimated page under 10 years of experience and up to 2 pages for 10+ years. |
+| At least 60% quantified bullets | `convention` | Public FAANG resume guide consensus | Passes when `>= 60%` of bullets contain a number, percentage, currency, or scale metric (`warn` at `35–59%`, `fail` below `35%`). |
+| Google X-Y-Z bullet count (informational) | `official` | Google Careers X-Y-Z guidance | Reports how many bullets match the `Accomplished [X] as measured by [Y], by doing [Z]` structure as an informational count (never required to pass). |
+| Skills section present | `convention` | Public FAANG resume guide consensus | Requires at least one populated skill group. |
+| No tables, text boxes, or images | `convention` | Public FAANG & ATS resume guide consensus | Flags table markup, text-box references, or embedded image URLs. |
+
+### 3. Why No Public Tool Reproduces a Specific Employer ATS Exactly
+
+**No public tool reproduces a specific employer ATS (such as Workday, Greenhouse, Lever, iCIMS, or Taleo) or its proprietary scoring and ranking behavior exactly.** Real employer ATS installations differ by vendor parser version, employer-configured custom fields, knockout questions, recruiter boolean search queries, and job-specific weighting rules that are never published publicly. RoleFit's ATS score and format profiles measure document parse hygiene, structural completeness, deterministic keyword coverage against your pasted job description, and adherence to published university and engineering resume guidelines.
 
 ## Privacy Architecture & Gemini BYOK
 
