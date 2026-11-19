@@ -130,7 +130,7 @@ export function AiSettingsModal({
     <div
       data-testid="ai-settings-backdrop"
       onClick={onClose}
-      className="no-print fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs"
+      className="no-print fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs"
     >
       <div
         ref={dialogRef}

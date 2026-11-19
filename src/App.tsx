@@ -413,14 +413,6 @@ export default function App() {
         </div>
       </main>
 
-      <AiSettingsModal
-        open={aiSettingsOpen}
-        settings={aiSettings}
-        onClose={() => setAiSettingsOpen(false)}
-        onSave={handleSaveAiSettings}
-        onClear={handleClearAiSettings}
-      />
-
       <AiTailorModal
         open={tailorTarget !== null}
         target={tailorTarget}
@@ -430,11 +422,22 @@ export default function App() {
         auditResult={auditResult}
         settings={aiSettings}
         onClose={() => setTailorTarget(null)}
-        onOpenSettings={() => setAiSettingsOpen(true)}
+        onOpenSettings={() => {
+          setTailorTarget(null);
+          setAiSettingsOpen(true);
+        }}
         onAcceptSummary={handleAcceptSummaryRewrite}
         onAcceptExperience={handleAcceptExperienceRewrite}
         onAcceptProject={handleAcceptProjectRewrite}
         onAcceptSkills={handleAcceptSkillsRewrite}
+      />
+
+      <AiSettingsModal
+        open={aiSettingsOpen}
+        settings={aiSettings}
+        onClose={() => setAiSettingsOpen(false)}
+        onSave={handleSaveAiSettings}
+        onClear={handleClearAiSettings}
       />
     </div>
   );

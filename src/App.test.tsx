@@ -262,9 +262,12 @@ describe("App", () => {
     fireEvent.click(screen.getByTestId("tailor-summary-button"));
     expect(screen.getByTestId("zero-key-fallback")).toBeInTheDocument();
 
-    // Click Configure Gemini API Key inside Tailor modal
+    // Click Configure Gemini API Key inside Tailor modal: closes Tailor modal and opens AI Settings cleanly
     fireEvent.click(screen.getByRole("button", { name: /Configure Gemini API Key/i }));
+    expect(screen.queryByTestId("ai-tailor-backdrop")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
     const settingsDialog = screen.getByRole("dialog", { name: /AI Settings/i });
+    expect(screen.getByTestId("ai-settings-backdrop").className).toContain("z-[60]");
     fireEvent.change(within(settingsDialog).getByLabelText("Gemini API key"), {
       target: { value: "AIzaSyAppTestValidKey1234567890" },
     });
@@ -307,6 +310,7 @@ describe("App", () => {
       ),
     );
 
+    fireEvent.click(screen.getByTestId("tailor-summary-button"));
     fireEvent.click(screen.getByRole("button", { name: "Generate Rewrite" }));
     await waitFor(() => {
       expect(screen.getByTestId("ai-review-panel")).toBeInTheDocument();
