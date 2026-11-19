@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 [data-testid="resume-sheet"][data-page-size="letter"] {
   max-width: 8.5in;
