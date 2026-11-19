@@ -1,4 +1,4 @@
-import { Download, FilePlus2, Moon, RotateCcw, ShieldCheck, Sparkles, Sun, Upload } from "lucide-react";
+import { Download, FilePlus2, FileUp, Moon, RotateCcw, ShieldCheck, Sparkles, Sun, Upload } from "lucide-react";
 import { useRef, useState, type ChangeEvent } from "react";
 import { MAX_BACKUP_BYTES } from "../lib/backup";
 import type { ThemeMode } from "../types/resume";
@@ -8,6 +8,7 @@ export interface StudioHeaderProps {
   theme: ThemeMode;
   aiActive?: boolean;
   onToggleTheme: () => void;
+  onOpenUploadResume?: () => void;
   onOpenAiSettings?: () => void;
   onLoadSample: () => void;
   onStartBlank: () => void;
@@ -35,6 +36,7 @@ export function StudioHeader({
   theme,
   aiActive = false,
   onToggleTheme,
+  onOpenUploadResume,
   onOpenAiSettings,
   onLoadSample,
   onStartBlank,
@@ -88,6 +90,18 @@ export function StudioHeader({
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5" role="toolbar" aria-label="Workspace actions">
+            {onOpenUploadResume && (
+              <button
+                type="button"
+                onClick={onOpenUploadResume}
+                data-testid="upload-resume-button"
+                className={headerButtonClass}
+              >
+                <FileUp className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" aria-hidden />
+                Upload Resume
+              </button>
+            )}
+
             <button type="button" onClick={() => setPendingDialog("sample")} className={headerButtonClass}>
               <RotateCcw className="h-3.5 w-3.5" aria-hidden />
               Load sample

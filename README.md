@@ -26,6 +26,13 @@ RoleFit is a local-first resume builder and job-description match studio that ru
 - **Studio Dark / Light Mode:** Toggle dark or light studio chrome (persisted in `localStorage`) while keeping the printable resume sheet white (`bg-white text-slate-900`) for accurate print previewing.
 - **First-Visit Sample Workspace & Safe Resets:** Preloads a sample resume and target job description on first visit so the preview, match score, and audit findings are active immediately. **Load sample** and **Start blank** actions are guarded by keyboard-accessible confirmation modals (`role="dialog"`, `aria-modal="true"`, Escape to close, focus trap and restoration).
 
+## Resume Upload & Extraction
+
+- **Supported Formats:** Upload existing `.pdf`, `.docx`, or `.txt` resumes via drag-and-drop or file picker from **Upload Resume** in the studio header.
+- **100% Client-Side Extraction & Hardening:** Files are extracted and parsed directly in your browser with a `5 MB` file size limit, magic-byte signature validation, PDF page cap, and DOCX zip-bomb, entry-count, and XML size checks. Nothing is sent over the network during local extraction.
+- **Review-Before-Import Modal:** Before replacing your active resume, inspect extracted Contact fields, Summary preview, Experience, Projects, Skills, and Education counts, along with any extraction warnings (such as scanned PDFs or truncated fields) and a collapsible **Unmapped lines** list. Clicking **Apply to Editor** replaces only the resume fields while keeping your job description, template, page size, and theme intact.
+- **Optional Gemini-Enhanced Extraction:** When a Gemini API key is configured in **AI Settings**, you can explicitly click **Enhance extraction with Gemini** inside the review modal to structure complex or multi-column layouts. Output is validated against the same strict schema and anti-fabrication checks, and any error leaves your local parsed draft intact.
+
 ## Privacy Architecture & Gemini BYOK
 
 - **Honest Privacy Badge:**

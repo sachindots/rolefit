@@ -262,8 +262,9 @@ describe("App", () => {
     fireEvent.click(screen.getByTestId("tailor-summary-button"));
     expect(screen.getByTestId("zero-key-fallback")).toBeInTheDocument();
 
-    // Click Configure Gemini API Key inside Tailor modal
+    // Click Configure Gemini API Key inside Tailor modal — closes Tailor modal so no two modals stack
     fireEvent.click(screen.getByRole("button", { name: /Configure Gemini API Key/i }));
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
     const settingsDialog = screen.getByRole("dialog", { name: /AI Settings/i });
     fireEvent.change(within(settingsDialog).getByLabelText("Gemini API key"), {
       target: { value: "AIzaSyAppTestValidKey1234567890" },
@@ -307,6 +308,7 @@ describe("App", () => {
       ),
     );
 
+    fireEvent.click(screen.getByTestId("tailor-summary-button"));
     fireEvent.click(screen.getByRole("button", { name: "Generate Rewrite" }));
     await waitFor(() => {
       expect(screen.getByTestId("ai-review-panel")).toBeInTheDocument();
@@ -372,5 +374,80 @@ describe("App", () => {
     fireEvent.click(within(reopenSettings).getByRole("button", { name: "Clear key" }));
     fireEvent.click(within(reopenSettings).getByRole("button", { name: "Cancel" }));
     expect(screen.getByTestId("privacy-badge")).toHaveTextContent("Local-only · Zero tracking");
+  });
+
+  it("closes AiTailorModal when opening AiSettingsModal so Escape never conflicts with stacked modals", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByTestId("tailor-summary-button"));
+    expect(screen.getByRole("dialog", { name: /Tailor with AI/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Configure Gemini API Key/i }));
+    expect(screen.queryByRole("dialog", { name: /Tailor with AI/i })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(screen.getByRole("dialog", { name: /AI Settings/i })).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("uploads a resume via Review-Before-Import modal, cancels safely, and applies while preserving workspace preferences", async () => {
+    render(<App />);
+
+    // Customize workspace preferences before upload
+    fireEvent.click(within(screen.getByRole("group", { name: "Resume template" })).getByRole("button", { name: "Modern Minimal" }));
+    fireEvent.click(within(screen.getByRole("group", { name: "Page size" })).getByRole("button", { name: "A4" }));
+    fireEvent.click(screen.getByTestId("theme-toggle"));
+    const originalJd = loadWorkspaceState().state.jobDescription;
+
+    const uploadedText = [
+      "Maya Patel",
+      "Senior Frontend Engineer",
+      "maya@example.com | Austin, TX",
+      "",
+      "SUMMARY",
+      "Frontend architect focused on accessible React and TypeScript systems.",
+      "",
+      "EXPERIENCE",
+      "Staff Frontend Engineer — FinFlow | 2022 - Present",
+      "- Built design system adopted by 14 teams cutting UI defects by 40%.",
+    ].join("\n");
+
+    // Open modal, upload file, then Cancel -> original resume stays intact
+    fireEvent.click(screen.getByTestId("upload-resume-button"));
+    const cancelFile = new File([uploadedText], "maya-cv.txt", { type: "text/plain" });
+    fireEvent.change(screen.getByTestId("resume-upload-input"), { target: { files: [cancelFile] } });
+    await waitFor(() => {
+      expect(screen.getByTestId("upload-review-summary")).toBeInTheDocument();
+    });
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }));
+    expect(screen.getByLabelText("Full name")).toHaveValue("Alex Morgan");
+
+    // Re-open, upload, and Apply to Editor
+    fireEvent.click(screen.getByTestId("upload-resume-button"));
+    const applyFile = new File([uploadedText], "maya-cv.txt", { type: "text/plain" });
+    fireEvent.change(screen.getByTestId("resume-upload-input"), { target: { files: [applyFile] } });
+    await waitFor(() => {
+      expect(screen.getByTestId("upload-review-summary")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId("apply-resume-button"));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Full name")).toHaveValue("Maya Patel");
+    expect(within(screen.getByTestId("resume-sheet")).getByRole("heading", { level: 1, name: "Maya Patel" })).toBeInTheDocument();
+
+    // Workspace preferences and JD are preserved, and resume persisted to localStorage
+    const saved = loadWorkspaceState().state;
+    expect(saved.resume.contact.fullName).toBe("Maya Patel");
+    expect(saved.jobDescription).toBe(originalJd);
+    expect(saved.template).toBe("modern-minimal");
+    expect(saved.pageSize).toBe("a4");
+    expect(saved.theme).toBe("dark");
+
+    // Dismissible success banner
+    const banner = screen.getByTestId("studio-banner");
+    expect(banner).toHaveTextContent("Resume imported from maya-cv.txt.");
+    fireEvent.click(within(banner).getByRole("button", { name: "Dismiss notice" }));
+    expect(screen.queryByTestId("studio-banner")).not.toBeInTheDocument();
   });
 });
