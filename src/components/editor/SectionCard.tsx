@@ -84,6 +84,11 @@ export function TextField({ label, value, onChange, maxLength = LIMITS.shortText
 /** Keeps a local draft and only commits values the schema accepts, so storage never holds an invalid URL. */
 export function UrlField({ label, value, onChange }: Pick<FieldProps, "label" | "value" | "onChange">) {
   const [draft, setDraft] = useState(value);
+  const [seen, setSeen] = useState(value);
+  if (value !== seen) {
+    setSeen(value);
+    if (value !== draft) setDraft(value);
+  }
   const hintId = useId();
   const valid = isSafeUrl(draft);
   return (
@@ -121,6 +126,11 @@ const parseList = (text: string): string[] =>
 
 export function ListField({ label, value, onChange }: { label: string; value: string[]; onChange: (value: string[]) => void }) {
   const [draft, setDraft] = useState(value.join(", "));
+  const [seen, setSeen] = useState(value);
+  if (value !== seen) {
+    setSeen(value);
+    if (parseList(draft).join("\n") !== value.join("\n")) setDraft(value.join(", "));
+  }
   return (
     <label className="block min-w-0 text-xs font-medium text-slate-600">
       {label} (comma separated)

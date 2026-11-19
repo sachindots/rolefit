@@ -122,6 +122,31 @@ describe("ResumeEditor", () => {
     expect(latest.education.map((e) => e.institution)).toEqual(["Stanford"]);
   });
 
+  it("resets URL and list drafts when the resume changes externally", () => {
+    const sample = createSampleWorkspace().resume;
+    const withData: ResumeData = {
+      ...createEmptyResume(),
+      contact: { ...createEmptyResume().contact, website: "https://a.dev" },
+      skills: [{ id: "s1", category: "Langs", items: ["Go"] }],
+    };
+    const { rerender } = render(<ResumeEditor resume={withData} onChange={() => {}} />);
+    type("Website", "htt");
+    type("Skills (skill group 1) (comma separated)", "Go, ");
+    rerender(<ResumeEditor resume={{ ...withData, contact: { ...withData.contact, website: "https://b.dev" }, skills: [{ id: "s1", category: "Langs", items: ["Rust"] }] }} onChange={() => {}} />);
+    expect(screen.getByLabelText("Website")).toHaveValue("https://b.dev");
+    expect(screen.getByLabelText("Skills (skill group 1) (comma separated)")).toHaveValue("Rust");
+    rerender(<ResumeEditor resume={sample} onChange={() => {}} />);
+    expect(screen.getByLabelText("Website")).toHaveValue(sample.contact.website);
+  });
+
+  it("keeps a trailing comma while typing in a list field", () => {
+    empty();
+    click("Add skill group");
+    const label = "Skills (skill group 1) (comma separated)";
+    type(label, "Go, ");
+    expect(screen.getByLabelText(label)).toHaveValue("Go, ");
+  });
+
   it("collapses a section and shows the item count", () => {
     render(<Harness initial={createSampleWorkspace().resume} />);
     const section = screen.getByRole("region", { name: "Experience" });
