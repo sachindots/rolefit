@@ -76,12 +76,12 @@ const RULE = /^[\s\-=_*#~.•|]{3,}$/;
 const LONE_MARKER = /^[•▪●◦▫■·*–—-]$/;
 const BULLET = /^(?:[•▪●◦▫■·]\s*|[*–—-]\s+)(.+)$/;
 
-const EMAIL = /(?:mailto:)?[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
-const PHONE = /\+?\d[\d\s().-]{6,}\d/;
+const EMAIL = /(?:mailto:)?[A-Z0-9._%+-]{1,64}@[A-Z0-9.-]{1,255}\.[A-Z]{2,24}/i;
+const PHONE = /\+?\d[\d\s().-]{6,20}\d/;
 const LABEL = /\b(?:e-?mail|phone|tel|telephone|mobile|cell|linkedin|github|website|portfolio|web|address|location)\s*:/gi;
 const UNSAFE_SCHEME = /\b(?:javascript|data|vbscript|file):[^\s|]*/gi;
-const URL_STRONG = /\b(?:https?:\/\/|www\.|(?:[a-z]+\.)?(?:linkedin|github)\.com\/?)[^\s|,;<>()]*/gi;
-const URL_BARE = /\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|io|dev|net|org|me|app|co|ai|tech|xyz)(?:\/[^\s|,;<>()]*)?(?![A-Za-z0-9])/g;
+const URL_STRONG = /\b(?:https?:\/\/|www\.|(?:[a-z]{1,30}\.)?(?:linkedin|github)\.com\/?)[^\s|,;<>()]*/gi;
+const URL_BARE = /\b[a-z0-9-]{1,63}(?:\.[a-z0-9-]{1,63}){0,5}\.(?:com|io|dev|net|org|me|app|co|ai|tech|xyz)(?:\/[^\s|,;<>()]*)?(?![A-Za-z0-9])/g;
 
 const LOC_STATE = /^[A-Z][A-Za-z.'’-]*(?: [A-Z][A-Za-z.'’-]*){0,3},\s*[A-Z]{2}(?:,\s*[A-Z][A-Za-z ]{1,30})?$/;
 const LOC_LOOSE = /^[A-Z][A-Za-z.'’-]*(?: [A-Z][A-Za-z.'’-]*){0,3},\s*[A-Z][A-Za-z]+(?: [A-Z][A-Za-z]+)?$/;
@@ -398,10 +398,22 @@ function parseEducation(lines: Line[]): EducationItem[] {
   return entries;
 }
 
+const TAG = /<\/?[a-z!][^>]{0,500}>/gi;
+
+/** Repeats until stable so nested payloads like `<scr<script>ipt>` cannot reassemble. */
+function stripTags(value: string): string {
+  let current = value;
+  for (;;) {
+    const next = current.replace(TAG, "");
+    if (next === current) return current.replace(/<(?=[a-z/!])/gi, "");
+    current = next;
+  }
+}
+
 function finalize(raw: ResumeData, ctx: Ctx): ResumeData {
   let trimmed = 0;
   const text = (value: string, max: number) => {
-    const cleaned = value.replace(/<\/?[a-z!][^>]*>/gi, "").replace(CONTROL, " ").replace(/\s+/g, " ").trim();
+    const cleaned = stripTags(value).replace(CONTROL, " ").replace(/\s+/g, " ").trim();
     if (cleaned.length <= max) return cleaned;
     trimmed += 1;
     return cleaned.slice(0, max).trimEnd();

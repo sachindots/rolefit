@@ -336,6 +336,26 @@ describe("robustness", () => {
     }
   });
 
+  it.each([
+    ["email-like run", "a".repeat(100_000)],
+    ["dotted labels", "a.".repeat(50_000)],
+    ["digit/space run", "1 ".repeat(50_000)],
+    ["unclosed tags", "<a".repeat(50_000)],
+    ["at signs", "a@".repeat(50_000)],
+    ["www runs", "www.".repeat(25_000)],
+  ])("stays linear on %s", (_n, junk) => {
+    for (const text of [junk, `Jane\n${junk}\nSKILLS\n${junk}`, `Jane\nEXPERIENCE\n${junk}`]) {
+      const t = Date.now();
+      expect(validateResume(parseResumeText(text).resume).ok).toBe(true);
+      expect(Date.now() - t).toBeLessThan(1500);
+    }
+  });
+
+  it("removes nested tag payloads completely", () => {
+    const r = parseResumeText("Jane\nEXPERIENCE\nEngineer | Acme 2020 - 2021\n- Did <scr<script>ipt>alert(1)</scr</script>ipt>things");
+    expect(r.resume.experience[0]!.bullets[0]!.text).not.toMatch(/</);
+  });
+
   it("is fast on adversarial repeated input", () => {
     const t = Date.now();
     parseResumeText("EXPERIENCE\n" + "a - ".repeat(20000) + "\n" + "2020 -".repeat(5000));
