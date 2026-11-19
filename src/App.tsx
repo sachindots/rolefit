@@ -7,6 +7,7 @@ import { ResumeEditor } from "./components/editor/ResumeEditor";
 import { JdMatchPanel } from "./components/match/JdMatchPanel";
 import { ResumePreview } from "./components/preview/ResumePreview";
 import { PAGE_SIZE_LIST, TEMPLATE_LIST } from "./components/preview/templates";
+import { ResumeUploadModal } from "./components/upload/ResumeUploadModal";
 import { createSampleWorkspace } from "./data/sampleWorkspace";
 import type { RewriteTarget } from "./lib/aiRewrite";
 import {
@@ -48,6 +49,7 @@ export default function App() {
   const [banner, setBanner] = useState<StudioBanner | null>(null);
   const [aiSettings, setAiSettings] = useState<AiSettings>(loadAiSettings);
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [tailorTarget, setTailorTarget] = useState<RewriteTarget | null>(null);
 
   useEffect(() => {
@@ -168,6 +170,12 @@ export default function App() {
     setBanner({ kind: "success", message: "Tailored skills applied." });
   };
 
+  const handleApplyUploadedResume = (resume: ResumeData, fileName: string) => {
+    updateResume(resume);
+    setUploadModalOpen(false);
+    setBanner({ kind: "success", message: `Resume imported from ${fileName}.` });
+  };
+
   const aiActive = aiSettings.source !== "none" && Boolean(aiSettings.apiKey);
   const matchResult = analyzeJobDescription(workspace.resume, workspace.jobDescription);
   const auditResult = auditResume(workspace.resume);
@@ -184,6 +192,7 @@ export default function App() {
         theme={workspace.theme}
         aiActive={aiActive}
         onToggleTheme={toggleTheme}
+        onOpenUploadResume={() => setUploadModalOpen(true)}
         onOpenAiSettings={() => setAiSettingsOpen(true)}
         onLoadSample={handleLoadSample}
         onStartBlank={handleStartBlank}
@@ -413,12 +422,11 @@ export default function App() {
         </div>
       </main>
 
-      <AiSettingsModal
-        open={aiSettingsOpen}
-        settings={aiSettings}
-        onClose={() => setAiSettingsOpen(false)}
-        onSave={handleSaveAiSettings}
-        onClear={handleClearAiSettings}
+      <ResumeUploadModal
+        open={uploadModalOpen}
+        aiSettings={aiSettings}
+        onClose={() => setUploadModalOpen(false)}
+        onApply={handleApplyUploadedResume}
       />
 
       <AiTailorModal
@@ -430,11 +438,22 @@ export default function App() {
         auditResult={auditResult}
         settings={aiSettings}
         onClose={() => setTailorTarget(null)}
-        onOpenSettings={() => setAiSettingsOpen(true)}
+        onOpenSettings={() => {
+          setTailorTarget(null);
+          setAiSettingsOpen(true);
+        }}
         onAcceptSummary={handleAcceptSummaryRewrite}
         onAcceptExperience={handleAcceptExperienceRewrite}
         onAcceptProject={handleAcceptProjectRewrite}
         onAcceptSkills={handleAcceptSkillsRewrite}
+      />
+
+      <AiSettingsModal
+        open={aiSettingsOpen}
+        settings={aiSettings}
+        onClose={() => setAiSettingsOpen(false)}
+        onSave={handleSaveAiSettings}
+        onClear={handleClearAiSettings}
       />
     </div>
   );
