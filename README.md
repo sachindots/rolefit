@@ -40,7 +40,7 @@ RoleFit is a local-first resume builder and job-description match studio that ru
   - Automatically updates to **`Local-first · AI via Gemini (on click)`** when a user or local dev Gemini API key is active.
 - **Browser-Direct BYOK Storage:**
   - In **AI Settings**, API keys default to **`Session only — clears on tab close`** (`sessionStorage` under `rolefit.ai.v1`), with an explicit opt-in **`Remember on this device (localStorage)`** option and a 1-click **Clear key** button.
-  - Select between `gemini-2.5-flash` (default), `gemini-2.5-flash-lite`, and `gemini-2.5-pro`.
+  - Select between `gemini-3.8-flash` (default), `gemini-3.7-flash`, and `gemini-2.5-flash`.
   - When you click **Generate Rewrite**, your browser sends the request directly to `https://generativelanguage.googleapis.com/v1beta/models/<model>:generateContent` via the `x-goog-api-key` header. No RoleFit backend exists.
 - **Local Dev `.env.local` Support (Never Bundled in Production):**
   - For local development only, you can create an untracked `.env.local` file in the repo root:

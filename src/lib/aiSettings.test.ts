@@ -30,10 +30,10 @@ const noEnv = { dev: false };
 describe("saveAiSettings / loadAiSettings", () => {
   it("defaults to sessionStorage and leaves localStorage empty", () => {
     const s = stores();
-    expect(saveAiSettings({ apiKey: KEY, model: "gemini-2.5-pro", storageMode: "session" }, s)).toEqual({ ok: true });
+    expect(saveAiSettings({ apiKey: KEY, model: "gemini-3.7-flash", storageMode: "session" }, s)).toEqual({ ok: true });
     expect(s.session!.getItem(AI_STORAGE_KEY)).toContain(KEY);
     expect(s.local!.getItem(AI_STORAGE_KEY)).toBeNull();
-    expect(loadAiSettings(s, noEnv)).toEqual({ apiKey: KEY, model: "gemini-2.5-pro", storageMode: "session", source: "user" });
+    expect(loadAiSettings(s, noEnv)).toEqual({ apiKey: KEY, model: "gemini-3.7-flash", storageMode: "session", source: "user" });
   });
 
   it("persists to localStorage only on explicit opt-in, and clears the session copy", () => {
@@ -74,7 +74,7 @@ describe("saveAiSettings / loadAiSettings", () => {
   });
 
   it("ignores corrupt or invalid stored records", () => {
-    for (const raw of ["{nope", "null", '"str"', JSON.stringify({ apiKey: "bad key" }), JSON.stringify({ model: "gemini-2.5-pro" })]) {
+    for (const raw of ["{nope", "null", '"str"', JSON.stringify({ apiKey: "bad key" }), JSON.stringify({ model: "gemini-3.7-flash" })]) {
       const s = stores();
       s.session!.setItem(AI_STORAGE_KEY, raw);
       expect(loadAiSettings(s, noEnv).source).toBe("none");

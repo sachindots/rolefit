@@ -25,9 +25,9 @@ const FOCUSABLE_SELECTOR =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 const MODEL_LABELS: Record<GeminiModelId, string> = {
-  "gemini-2.5-flash": "Gemini 2.5 Flash (Recommended — balanced speed & quality)",
-  "gemini-2.5-flash-lite": "Gemini 2.5 Flash-Lite (Fastest & lightweight)",
-  "gemini-2.5-pro": "Gemini 2.5 Pro (Deepest reasoning)",
+  "gemini-3.8-flash": "Gemini 3.8 Flash (Recommended)",
+  "gemini-3.7-flash": "Gemini 3.7 Flash (Fallback)",
+  "gemini-2.5-flash": "Gemini 2.5 Flash (Legacy)",
 };
 
 export function AiSettingsModal({
