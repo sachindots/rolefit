@@ -20,6 +20,7 @@ import {
 } from "react";
 import { enhanceExtractionWithGemini } from "../../lib/aiRewrite";
 import type { AiSettings } from "../../lib/aiSettings";
+import { scoreResumeForAts } from "../../lib/atsScore";
 import {
   MAX_RESUME_FILE_BYTES,
   extractResumeText,
@@ -27,10 +28,12 @@ import {
 } from "../../lib/resumeExtract";
 import { parseResumeText } from "../../lib/resumeParser";
 import type { ResumeData } from "../../types/resume";
+import { getTopAtsFixes } from "../ats/AtsFormatPanel";
 
 export interface ResumeUploadModalProps {
   open: boolean;
   aiSettings: AiSettings;
+  jobDescription?: string;
   onClose: () => void;
   onApply: (resume: ResumeData, fileName: string) => void;
 }
@@ -77,6 +80,7 @@ function formatContactEntries(resume: ResumeData): Array<{ label: string; value:
 export function ResumeUploadModal({
   open,
   aiSettings,
+  jobDescription,
   onClose,
   onApply,
 }: ResumeUploadModalProps) {
@@ -271,6 +275,8 @@ export function ResumeUploadModal({
   const totalSkillItems = draft
     ? draft.resume.skills.reduce((sum, group) => sum + group.items.length, 0)
     : 0;
+  const draftAtsScore = draft ? scoreResumeForAts(draft.resume, { jobDescription }) : null;
+  const draftTopFixes = draft ? getTopAtsFixes(draft.resume, jobDescription, 3) : [];
 
   return (
     <div
@@ -442,6 +448,58 @@ export function ResumeUploadModal({
                     ))}
                   </ul>
                 </div>
+              )}
+
+              {draftAtsScore && (
+                <section
+                  data-testid="upload-ats-summary"
+                  aria-label="Uploaded resume ATS score and top fixes"
+                  className="rounded-lg border border-indigo-200/80 bg-indigo-50/50 p-3 dark:border-indigo-900/70 dark:bg-indigo-950/30"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-indigo-900 dark:text-indigo-200">
+                        ATS Readiness Score
+                      </h3>
+                      <p className="mt-0.5 text-[11px] text-slate-600 dark:text-slate-300">
+                        {draftAtsScore.hasJobDescription
+                          ? "Scored with active job description keyword matching."
+                          : "General ATS readiness (no job description active)."}
+                      </p>
+                    </div>
+                    <span
+                      data-testid="upload-ats-score"
+                      className="inline-flex items-center rounded-full bg-indigo-600 px-2.5 py-0.5 text-xs font-bold text-white"
+                    >
+                      {draftAtsScore.total}/100
+                    </span>
+                  </div>
+
+                  {draftTopFixes.length > 0 ? (
+                    <div className="mt-2.5 border-t border-indigo-200/60 pt-2 dark:border-indigo-900/60">
+                      <p className="text-[11px] font-semibold text-slate-800 dark:text-slate-200">
+                        Top {draftTopFixes.length} {draftTopFixes.length === 1 ? "fix" : "fixes"}:
+                      </p>
+                      <ol
+                        data-testid="upload-ats-top-fixes"
+                        className="mt-1 list-decimal space-y-1 pl-4 text-xs text-slate-700 dark:text-slate-200"
+                      >
+                        {draftTopFixes.map((fix) => (
+                          <li key={fix.id} className="break-words">
+                            <span className="font-semibold">{fix.label}:</span> {fix.detail}
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  ) : (
+                    <p
+                      data-testid="upload-ats-top-fixes"
+                      className="mt-2 text-xs font-medium text-emerald-800 dark:text-emerald-300"
+                    >
+                      All ATS readiness checks pass.
+                    </p>
+                  )}
+                </section>
               )}
 
               <div

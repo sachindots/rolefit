@@ -444,10 +444,62 @@ describe("App", () => {
     expect(saved.pageSize).toBe("a4");
     expect(saved.theme).toBe("dark");
 
-    // Dismissible success banner
+    // Dismissible success banner with post-upload ATS score and top 3 fixes
     const banner = screen.getByTestId("studio-banner");
     expect(banner).toHaveTextContent("Resume imported from maya-cv.txt.");
+    expect(screen.getByTestId("post-upload-ats-score")).toHaveTextContent(/ATS Score: \d+\/100/);
+    const fixesList = screen.getByTestId("post-upload-ats-fixes");
+    expect(within(fixesList).getAllByRole("listitem")).toHaveLength(3);
+    expect(fixesList).toHaveTextContent(/Keyword match/i);
+
     fireEvent.click(within(banner).getByRole("button", { name: "Dismiss notice" }));
     expect(screen.queryByTestId("studio-banner")).not.toBeInTheDocument();
+  });
+
+  it("wires the ATS & Format panel with live recalculation, profile switcher, and section jump links to the editor", () => {
+    render(<App />);
+
+    const atsTab = screen.getByRole("tab", { name: /ATS & Format/i });
+    const initialTabScore = Number.parseInt(
+      screen.getByTestId("tab-ats-score").textContent ?? "0",
+      10,
+    );
+    expect(initialTabScore).toBeGreaterThanOrEqual(70);
+
+    fireEvent.click(atsTab);
+    expect(atsTab).toHaveAttribute("aria-selected", "true");
+    const atsPane = screen.getByRole("region", { name: "ATS and format checks" });
+    expect(atsPane.className).toContain("block");
+    expect(screen.getByTestId("ats-total-score")).toHaveTextContent(`${initialTabScore}/100`);
+
+    // Switch format profiles (Harvard -> London UK CV -> FAANG)
+    const profileGroup = screen.getByRole("group", { name: "Format profile" });
+    fireEvent.click(within(profileGroup).getByRole("button", { name: /London/i }));
+    expect(screen.getByTestId("format-check-status-uk-a4-page-size")).toHaveTextContent("Warn");
+
+    // Change page size in preview toolbar -> London A4 check recalculates live to Pass
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Page size" })).getByRole("button", { name: "A4" }),
+    );
+    expect(screen.getByTestId("format-check-status-uk-a4-page-size")).toHaveTextContent("Pass");
+
+    // Start blank so checks fail, then click a section jump link on FAANG profile
+    fireEvent.click(screen.getByRole("button", { name: "Start blank" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Start blank" }),
+    );
+
+    expect(Number.parseInt(screen.getByTestId("tab-ats-score").textContent ?? "0", 10)).toBeLessThan(
+      initialTabScore,
+    );
+
+    fireEvent.click(within(profileGroup).getByRole("button", { name: "FAANG" }));
+    const skillsJumpBtn = screen.getByTestId("format-check-jump-faang-skills-section");
+    fireEvent.click(skillsJumpBtn);
+
+    // Jumping to a section switches active tab to Editor and focuses inside the target section
+    expect(screen.getByRole("tab", { name: "Editor" })).toHaveAttribute("aria-selected", "true");
+    const skillsSection = screen.getByRole("region", { name: "Skills" });
+    expect(skillsSection.contains(document.activeElement)).toBe(true);
   });
 });
