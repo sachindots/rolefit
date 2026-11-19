@@ -14,7 +14,7 @@ import type { AiSettings } from "./aiSettings";
 import type { AtsAuditResult } from "./atsAudit";
 
 const KEY = "AIzaSyTestKey_1234567890abcdef-XYZ";
-const settings: AiSettings = { apiKey: KEY, model: "gemini-2.5-flash", storageMode: "session", source: "user" };
+const settings: AiSettings = { apiKey: KEY, model: "gemini-3.8-flash", storageMode: "session", source: "user" };
 const SCAN = { who: "Backend engineer", seniority: "Senior", whyThisJob: "Matches Node.js and TypeScript" };
 
 const experience: ExperienceItem = {
@@ -175,7 +175,7 @@ describe("rewriteSectionWithGemini: request", () => {
     await rewriteSectionWithGemini(base({ kind: "experience", item: experience }, { match, audit, companyType: "startup" }) as RewriteParams<{ kind: "experience"; item: ExperienceItem }>, f);
     expect(f).toHaveBeenCalledOnce();
     const [url, init] = f.mock.calls[0]!;
-    expect(url).toBe(`${GEMINI_ENDPOINT}/gemini-2.5-flash:generateContent`);
+    expect(url).toBe(`${GEMINI_ENDPOINT}/gemini-3.8-flash:generateContent`);
     expect(String(url)).not.toContain(KEY);
     expect(String(url)).not.toContain("key=");
     expect(init?.method).toBe("POST");
@@ -190,8 +190,8 @@ describe("rewriteSectionWithGemini: request", () => {
 
   it("uses the selected model in the URL", async () => {
     const f = fetchReturning(expEnvelope(["Rebuilt checkout."]));
-    await rewriteSectionWithGemini({ ...base({ kind: "experience", item: experience }), settings: { ...settings, model: "gemini-2.5-pro" } } as RewriteParams<{ kind: "experience"; item: ExperienceItem }>, f);
-    expect(String(f.mock.calls[0]![0])).toContain("/gemini-2.5-pro:generateContent");
+    await rewriteSectionWithGemini({ ...base({ kind: "experience", item: experience }), settings: { ...settings, model: "gemini-3.7-flash" } } as RewriteParams<{ kind: "experience"; item: ExperienceItem }>, f);
+    expect(String(f.mock.calls[0]![0])).toContain("/gemini-3.7-flash:generateContent");
   });
 
   it("refuses to call without a valid key or with an unknown model", async () => {

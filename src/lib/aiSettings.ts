@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-export type GeminiModelId = "gemini-2.5-flash" | "gemini-2.5-flash-lite" | "gemini-2.5-pro";
+export type GeminiModelId = "gemini-3.8-flash" | "gemini-3.7-flash" | "gemini-2.5-flash";
 export type KeyStorageMode = "session" | "local";
 
 export interface AiSettings {
@@ -16,10 +16,10 @@ export interface BuildEnv {
 }
 
 export const AI_STORAGE_KEY = "rolefit.ai.v1";
-export const GEMINI_MODELS: readonly GeminiModelId[] = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"];
-export const DEFAULT_GEMINI_MODEL: GeminiModelId = "gemini-2.5-flash";
+export const GEMINI_MODELS: readonly GeminiModelId[] = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-2.5-flash"];
+export const DEFAULT_GEMINI_MODEL: GeminiModelId = "gemini-3.8-flash";
 
-const API_KEY_PATTERN = /^[A-Za-z0-9_-]{16,256}$/;
+const API_KEY_PATTERN = /^[A-Za-z0-9._-]{16,256}$/;
 
 export const isGeminiModelId = (value: unknown): value is GeminiModelId => GEMINI_MODELS.some((m) => m === value);
 export const isValidApiKey = (value: string): boolean => API_KEY_PATTERN.test(value);

@@ -70,14 +70,14 @@ describe("AiSettingsModal", () => {
 
     fireEvent.change(keyInput, { target: { value: VALID_KEY } });
     fireEvent.change(screen.getByLabelText("Gemini model"), {
-      target: { value: "gemini-2.5-pro" },
+      target: { value: "gemini-3.7-flash" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save key" }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(current).toEqual({
       apiKey: VALID_KEY,
-      model: "gemini-2.5-pro",
+      model: "gemini-3.7-flash",
       storageMode: "session",
       source: "user",
     });
@@ -102,7 +102,7 @@ describe("AiSettingsModal", () => {
     fireEvent.click(screen.getByLabelText(/Remember on this device/i));
     fireEvent.click(screen.getByRole("button", { name: "Save key" }));
     expect(current.storageMode).toBe("local");
-    expect(localStorage.getItem("rolefit.ai.v1")).toContain("gemini-2.5-pro");
+    expect(localStorage.getItem("rolefit.ai.v1")).toContain("gemini-3.7-flash");
     expect(sessionStorage.getItem("rolefit.ai.v1")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Clear key" }));
@@ -114,7 +114,7 @@ describe("AiSettingsModal", () => {
     const rawDevKey = "AIzaSySuperSecretDevEnvKey999999999";
     const devSettings: AiSettings = {
       apiKey: rawDevKey,
-      model: "gemini-2.5-flash",
+      model: "gemini-3.8-flash",
       storageMode: "session",
       source: "dev-env",
     };
@@ -157,7 +157,7 @@ describe("AiTailorModal", () => {
         jobDescription={sample.jobDescription}
         matchResult={matchResult}
         auditResult={auditResult}
-        settings={{ apiKey: "", model: "gemini-2.5-flash", storageMode: "session", source: "none" }}
+        settings={{ apiKey: "", model: "gemini-3.8-flash", storageMode: "session", source: "none" }}
         onClose={() => {}}
         onOpenSettings={onOpenSettings}
         onAcceptSummary={() => {}}
@@ -236,7 +236,7 @@ describe("AiTailorModal", () => {
         auditResult={auditResult}
         settings={{
           apiKey: VALID_KEY,
-          model: "gemini-2.5-flash",
+          model: "gemini-3.8-flash",
           storageMode: "session",
           source: "user",
         }}
@@ -309,7 +309,7 @@ describe("AiTailorModal", () => {
         auditResult={auditResult}
         settings={{
           apiKey: VALID_KEY,
-          model: "gemini-2.5-flash",
+          model: "gemini-3.8-flash",
           storageMode: "session",
           source: "user",
         }}
